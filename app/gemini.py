@@ -97,7 +97,7 @@ def generate(system: str, turns: list) -> str:
             last_error = f"HTTP {resp.status_code}: {_error_message(resp)}"
 
         if attempt < API_RETRIES:
-            time.sleep(2 ** attempt)  # 2 с, затем 4 с
+            time.sleep(2 ** attempt)  # 2, 4, 8 секунд
 
     raise ApiError(f"Не удалось получить ответ за {API_RETRIES} попытки. Последняя ошибка - {last_error}")
 

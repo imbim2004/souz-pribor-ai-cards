@@ -9,7 +9,7 @@ load_dotenv()
 
 # Модель по умолчанию. Если аккаунту она недоступна, код сам спросит у API
 # список моделей и подскажет, что поставить в GEMINI_MODEL.
-DEFAULT_MODEL = "gemini-3.8-flash"
+DEFAULT_MODEL = "gemini-3.5-flash"
 
 API_ROOT = "https://generativelanguage.googleapis.com/v1beta"
 
@@ -18,8 +18,9 @@ TITLE_MAX = 70
 DESCRIPTION_MIN = 800
 DESCRIPTION_MAX = 1200
 
-# Сколько раз пробуем позвать API при сетевой ошибке или 5xx/429.
-API_RETRIES = 3
+# Сколько раз пробуем позвать API при сетевой ошибке, 429 или 5xx (модель бывает
+# перегружена и отвечает 503 - помогает пауза и повтор).
+API_RETRIES = 4
 API_TIMEOUT = 90  # секунд на один запрос
 
 # Сколько раз просим модель переписать ответ, если не сошлись длины.
@@ -40,11 +41,15 @@ EXPECTED_SPECS = [
 ]
 
 
+class ConfigError(RuntimeError):
+    """Сервис не настроен: нет ключа API."""
+
+
 def api_key() -> str:
     """Ключ только из окружения: в коде и в репозитории его нет."""
     key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not key:
-        raise RuntimeError(
+        raise ConfigError(
             "Не задан GEMINI_API_KEY. Скопируйте .env.example в .env и впишите ключ "
             "или выполните: export GEMINI_API_KEY=..."
         )

@@ -8,6 +8,7 @@ import json
 import sys
 
 from app import gemini, product, render
+from app.config import ConfigError
 from app.generator import generate_card
 
 
@@ -35,6 +36,9 @@ def main() -> int:
 
     try:
         result = generate_card(item)
+    except ConfigError as exc:
+        print(f"Сервис не настроен: {exc}", file=sys.stderr)
+        return 4
     except gemini.ApiError as exc:
         print(f"Ошибка LLM: {exc}", file=sys.stderr)
         return 3

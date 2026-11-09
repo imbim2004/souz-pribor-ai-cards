@@ -9,12 +9,27 @@ import re
 
 from app.config import DESCRIPTION_MAX, DESCRIPTION_MIN, TITLE_MAX
 
-# Единицы, которые реально встречаются в карточках КИП.
-UNITS = [
-    "МПа", "кПа", "ГПа", "бар", "мбар", "кгс/см2", "кгс/см²", "атм", "мм вод.ст.",
-    "°C", "°С", "К", "мм", "см", "м", "дюйм", "В", "кВ", "мА", "А", "Вт", "Гц",
-    "кг", "г", "л/мин", "м3/ч", "м³/ч", "IP", "%", "ГОСТ", "Ом",
+# Единицы измерения, которые встречаются в карточках КИП. Ищем их не подстрокой,
+# а по границам слова и рядом с числом: иначе «Вт» находится внутри «вторичных»,
+# а «м» - внутри любого русского слова.
+SUFFIX_UNITS = [
+    "МПа", "кПа", "ГПа", "мбар", "бар", "кгс/см2", "атм", "мм вод.ст.",
+    "°C", "мм", "см", "дюйм", "м3/ч", "л/мин", "м", "кВ", "В", "мА", "А",
+    "Вт", "Гц", "кг", "г", "Ом", "%", "К",
 ]
+
+# Обозначения, которые стоят перед числом: IP65, ГОСТ 2405-88, DN 50.
+PREFIX_UNITS = ["IP", "ГОСТ", "ТУ", "DN", "Ру"]
+
+_BOUNDARY = r"(?![А-Яа-яЁёA-Za-z])"
+_SUFFIX_RE = {
+    u: re.compile(r"\d\s*" + re.escape(u) + _BOUNDARY, re.IGNORECASE)
+    for u in SUFFIX_UNITS
+}
+_PREFIX_RE = {
+    u: re.compile(r"(?<![А-Яа-яЁёA-Za-z])" + re.escape(u) + r"\s*\d", re.IGNORECASE)
+    for u in PREFIX_UNITS
+}
 
 NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
 
@@ -30,9 +45,22 @@ def _numbers(text: str) -> set:
     return found
 
 
+def _normalize_units(text: str) -> str:
+    """Приводим разнопись к одному виду, чтобы не ловить мнимые расхождения."""
+    return (
+        (text or "")
+        .replace("\u00b2", "2")   # см² -> см2
+        .replace("\u00b3", "3")   # м³ -> м3
+        .replace("\u00b0\u0421", "\u00b0C")  # °С (кириллица) -> °C
+    )
+
+
 def _units(text: str) -> set:
-    lowered = (text or "").lower()
-    return {u for u in UNITS if u.lower() in lowered}
+    """Единицы измерения, фактически применённые к числам в тексте."""
+    text = _normalize_units(text)
+    found = {u for u, rx in _SUFFIX_RE.items() if rx.search(text)}
+    found |= {u for u, rx in _PREFIX_RE.items() if rx.search(text)}
+    return found
 
 
 def source_text(product) -> str:
@@ -51,7 +79,10 @@ def card_text(card: dict) -> str:
     parts += [str(q) for q in (card.get("search_queries") or [])]
     commercial = card.get("commercial") or {}
     if isinstance(commercial, dict):
-        parts += [str(v) for v in commercial.values()]
+        # notes - это список того, что менеджеру надо уточнить. Там законно
+        # упоминаются единицы и названия параметров, которых во входе нет
+        # («уточнить степень защиты IP»), поэтому в сверку поле не берём.
+        parts += [str(commercial.get("fits", "")), str(commercial.get("tasks", ""))]
     return "\n".join(parts)
 
 

@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app import gemini, product, render
-from app.config import model_name
+from app.config import ConfigError, model_name
 from app.generator import generate_card
 from app.web_form import FORM_PAGE
 
@@ -30,6 +30,8 @@ def generate(payload: dict) -> JSONResponse:
 
     try:
         result = generate_card(item)
+    except ConfigError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
     except gemini.ApiError as exc:
         # 502: отказал внешний сервис, а не клиент прислал плохие данные.
         return JSONResponse({"error": str(exc)}, status_code=502)
