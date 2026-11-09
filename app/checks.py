@@ -15,15 +15,17 @@ from app.config import DESCRIPTION_MAX, DESCRIPTION_MIN, TITLE_MAX
 SUFFIX_UNITS = [
     "МПа", "кПа", "ГПа", "мбар", "бар", "кгс/см2", "атм", "мм вод.ст.",
     "°C", "мм", "см", "дюйм", "м3/ч", "л/мин", "м", "кВ", "В", "мА", "А",
-    "Вт", "Гц", "кг", "г", "Ом", "%", "К",
+    "Вт", "Гц", "кг", "Ом", "%", "К",
 ]
 
 # Обозначения, которые стоят перед числом: IP65, ГОСТ 2405-88, DN 50.
 PREFIX_UNITS = ["IP", "ГОСТ", "ТУ", "DN", "Ру"]
 
 _BOUNDARY = r"(?![А-Яа-яЁёA-Za-z])"
+# Регистр учитываем: иначе «100 в системах» читается как 100 В (вольт),
+# а «2026 г.» - как граммы.
 _SUFFIX_RE = {
-    u: re.compile(r"\d\s*" + re.escape(u) + _BOUNDARY, re.IGNORECASE)
+    u: re.compile(r"\d\s*" + re.escape(u) + _BOUNDARY)
     for u in SUFFIX_UNITS
 }
 _PREFIX_RE = {
